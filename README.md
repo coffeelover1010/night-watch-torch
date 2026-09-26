@@ -16,6 +16,16 @@ The button appears when:
 
 The button hides during combat. After combat, it returns when the torch is ready. A real click is required to use the item.
 
+A smaller **Hide** button can hide both buttons for a while. It is **off by default**; enable **Show Hide button** in settings. The hide duration defaults to **5 minutes**, and the timer survives a UI reload. Turning the option off clears any active hide timer.
+
+## Settings and moving buttons
+
+Type `/nwt` to open settings. Set the hide duration in minutes and the delay after combat in seconds, then click **Save**. The delay defaults to **0 seconds**.
+
+While settings are open, the torch button and the Hide button (if enabled) appear as previews even if you are outside the selected zone or do not have the torch. Drag either visible button to move it; their positions save separately. Preview buttons do not use the torch or start a hide timer. Combat temporarily hides the previews and prevents moving them.
+
+**Show again now** clears the hide timer. **Reset positions** puts both buttons back below the center of the screen. Close settings to resume normal behavior.
+
 ## In game
 
 ![The Light Torch button in Raven Hill, Duskwood](media/light-torch-in-game.png)
@@ -24,7 +34,9 @@ User-supplied screenshot showing the Light Torch button in game. Other interface
 
 ## Commands
 
-- `/nwt` - show your settings and help.
+- `/nwt` or `/nwt settings` - open settings and movable previews.
+- `/nwt show` - clear the hide timer.
+- `/nwt help` - show command help.
 - `/nwt zone` - use your current zone instead of Duskwood.
 - `/nwt on` or `/nwt off` - turn the helper on or off.
 - `/nwt reset` - turn it on and restore Duskwood.
