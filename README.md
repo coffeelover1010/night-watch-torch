@@ -40,6 +40,10 @@ While settings are open, the torch button and the Hide button (if enabled) appea
 
 User-supplied screenshot showing the Light Torch button in game. Other interface elements belong to the game or other installed addons.
 
+![A lit torch while riding a gryphon](media/torch-on-flight.png)
+
+User-supplied gameplay screenshot of the lit torch during a gryphon flight.
+
 ## Commands
 
 - `/nwt` or `/nwt settings` - open settings and movable previews.
