@@ -7,9 +7,11 @@ local lastCombatEnd
 local Refresh
 local settingsCategory
 local fadeStart, reminderVisible
+local temporarilySuppressed = false
 
 local function UpdateFade()
     if not button or not hideHolder or InCombatLockdown() then return end
+    if temporarilySuppressed and not preview then return end
     local now = GetTime()
     local hovering = reminderVisible and not preview and db.fadeEnabled
         and (button:IsMouseOver()
@@ -85,9 +87,30 @@ local function HasTorchBuff()
     return false
 end
 
+local mealNames = { ["Food"] = true, ["Drink"] = true, ["Food & Drink"] = true, ["Refreshment"] = true }
+local function IsEatingOrDrinking()
+    -- Match active consumption buffs, not the long-lived Well Fed bonus.
+    if C_Spell and C_Spell.GetSpellName then
+        for _, id in ipairs({ 433, 430, 160903 }) do
+            local name = C_Spell.GetSpellName(id)
+            if name then mealNames[name] = true end
+        end
+    end
+    for index = 1, 255 do
+        local aura = C_UnitAuras.GetAuraDataByIndex("player", index, "HELPFUL")
+        if not aura then break end
+        if aura.name and not (issecretvalue and issecretvalue(aura.name)) and mealNames[aura.name] then
+            return true
+        end
+    end
+    return false
+end
+
 Refresh = function()
     -- Never inspect combat auras or change protected frames in combat.
     if not button or InCombatLockdown() then return end
+    local wasSuppressed = temporarilySuppressed
+    temporarilySuppressed = false
     local show = preview and db.enabled
     if settings then settings.showHelper:SetChecked(db.enabled) end
     local action = not preview and "item" or nil
@@ -103,12 +126,16 @@ Refresh = function()
             local info = C_Container.GetContainerItemInfo(bag, slot)
             show = info and not info.isLocked and enabled == 1
                 and (start == 0 or start + duration <= GetTime())
-                and not UnitCastingInfo("player") and not UnitChannelInfo("player")
+            if show and (UnitCastingInfo("player") or UnitChannelInfo("player") or IsEatingOrDrinking()) then
+                temporarilySuppressed = true
+                show = false
+            end
         end
     end
     button:SetShown(not not show)
     hideButton:SetShown(not not (show and db.showHideButton))
-    if not show or not reminderVisible then fadeStart = nil end
+    if (not show and not temporarilySuppressed)
+        or (show and not reminderVisible and not wasSuppressed) then fadeStart = nil end
     reminderVisible = not not show
     UpdateFade()
 end
@@ -291,7 +318,12 @@ local function Initialize()
     db.hideMinutes = Number(db.hideMinutes, 5, 1, 1440)
     db.showHideButton = db.showHideButton == true
     if not db.showHideButton then db.hiddenUntil = 0 end
-    db.combatDelay = Number(db.combatDelay, 0, 0, 600)
+    -- Move the former zero default to ten once; preserve custom nonzero delays.
+    if not db.delayDefault10Applied then
+        if db.combatDelay == nil or db.combatDelay == 0 then db.combatDelay = 10 end
+        db.delayDefault10Applied = true
+    end
+    db.combatDelay = Number(db.combatDelay, 10, 0, 600)
     db.fadeEnabled = db.fadeEnabled == true
     db.fadeSeconds = Number(db.fadeSeconds, 10, 1, 600)
     db.hiddenUntil = Number(db.hiddenUntil, 0, 0, GetServerTime() + 86400)

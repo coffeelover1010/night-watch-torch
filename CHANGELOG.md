@@ -1,3 +1,9 @@
+# 0.2.2-beta
+
+- Default the post-combat delay to 10 seconds, including existing zero-default settings. Custom nonzero delays are preserved; zero can still be selected afterward.
+- Wait while Food, Drink, Food & Drink, or Refreshment consumption buffs are active. Well Fed does not delay the reminder.
+- Preserve fading through ordinary casts and eating/drinking, so these do not restart a faded reminder.
+
 # 0.2.1-beta
 
 - Fix a fade error caused by the unavailable MouseIsOver global. Use the frame method and skip hover checks when fading is off or settings previews are open.

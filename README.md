@@ -26,7 +26,9 @@ Find **Night Watch Torch** under **Options → AddOns**, then click **Open setti
 
 Click the small **X** at the top-right of **Light Torch** to hide the helper until you turn it back on. Type `/nwt` and check **Show torch helper** to restore it. This choice survives reloads.
 
-Type `/nwt` to open settings. Set the hide duration in minutes and the delay after combat in seconds, then click **Save**. The delay defaults to **0 seconds**.
+Type `/nwt` to open settings. Set the hide duration in minutes and the delay after combat in seconds, then click **Save**. The delay defaults to **10 seconds**. The update changes the old zero default to 10 once; you can still choose zero afterward.
+
+The reminder also waits while eating or drinking. It appears only after your meal ends and the post-combat delay has elapsed. Ordinary casts and meals do not restart the fade timer. Food, Drink, Food & Drink, and Refreshment buffs are recognized; the long-lived Well Fed bonus does not block the reminder.
 
 While settings are open, the torch button and the Hide button (if enabled) appear as previews even if you are outside the selected zone or do not have the torch. Drag either visible button to move it; their positions save separately. Preview buttons do not use the torch or start a hide timer. Combat temporarily hides the previews and prevents moving them.
 
