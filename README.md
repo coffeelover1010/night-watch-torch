@@ -16,6 +16,12 @@ The button appears when:
 
 The button hides during combat. After combat, it returns when the torch is ready. A real click is required to use the item.
 
+## In game
+
+![The Light Torch button in Raven Hill, Duskwood](media/light-torch-in-game.png)
+
+User-supplied screenshot showing the Light Torch button in game. Other interface elements belong to the game or other installed addons.
+
 ## Commands
 
 - `/nwt` - show your settings and help.
