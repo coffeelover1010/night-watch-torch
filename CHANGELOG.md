@@ -1,3 +1,14 @@
+# 0.2.1-beta
+
+- Fix a fade error caused by the unavailable MouseIsOver global. Use the frame method and skip hover checks when fading is off or settings previews are open.
+
+- Add optional fading after a configurable number of seconds, with hover-to-show and always-visible settings previews. Off by default; default time is 10 seconds.
+
+- Add Night Watch Torch to Options > AddOns, with a button to open settings and movable previews.
+
+- Add a small X on the Light Torch button to hide the helper until enabled again.
+- Add Show torch helper in settings to restore it and clear any hide timer.
+
 # 0.2.0-beta
 
 - Add an optional smaller Hide button, off by default. Hide duration defaults to 5 minutes.

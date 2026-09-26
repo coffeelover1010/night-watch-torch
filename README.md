@@ -20,6 +20,12 @@ A smaller **Hide** button can hide both buttons for a while. It is **off by defa
 
 ## Settings and moving buttons
 
+Enable **Fade buttons when not hovered** to fade the buttons out after a chosen number of seconds. The default time is **10 seconds**, and fading is **off by default**. Hover over either button's position to reveal both again. They fade over half a second and stay fully visible while hovered or in settings previews. Each new reminder starts with a fresh fade timer.
+
+Find **Night Watch Torch** under **Options → AddOns**, then click **Open settings and move buttons**. You can also type `/nwt`.
+
+Click the small **X** at the top-right of **Light Torch** to hide the helper until you turn it back on. Type `/nwt` and check **Show torch helper** to restore it. This choice survives reloads.
+
 Type `/nwt` to open settings. Set the hide duration in minutes and the delay after combat in seconds, then click **Save**. The delay defaults to **0 seconds**.
 
 While settings are open, the torch button and the Hide button (if enabled) appear as previews even if you are outside the selected zone or do not have the torch. Drag either visible button to move it; their positions save separately. Preview buttons do not use the torch or start a hide timer. Combat temporarily hides the previews and prevents moving them.

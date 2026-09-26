@@ -5,6 +5,27 @@ local button, holder, hideButton, hideHolder, settings, db
 local preview = false
 local lastCombatEnd
 local Refresh
+local settingsCategory
+local fadeStart, reminderVisible
+
+local function UpdateFade()
+    if not button or not hideHolder or InCombatLockdown() then return end
+    local now = GetTime()
+    local hovering = reminderVisible and not preview and db.fadeEnabled
+        and (button:IsMouseOver()
+        or NightWatchTorchDismiss:IsMouseOver()
+        or (db.showHideButton and hideButton:IsMouseOver()))
+    if not reminderVisible or preview or not db.fadeEnabled or hovering then
+        fadeStart = now
+    end
+    fadeStart = fadeStart or now
+    local alpha = 1
+    if reminderVisible and not preview and db.fadeEnabled and not hovering then
+        alpha = 1 - math.max(0, math.min(1, (now - fadeStart - db.fadeSeconds) / 0.5))
+    end
+    holder:SetAlpha(alpha)
+    hideHolder:SetAlpha(alpha)
+end
 
 local function Number(value, default, minimum, maximum)
     value = tonumber(value)
@@ -67,7 +88,8 @@ end
 Refresh = function()
     -- Never inspect combat auras or change protected frames in combat.
     if not button or InCombatLockdown() then return end
-    local show = preview
+    local show = preview and db.enabled
+    if settings then settings.showHelper:SetChecked(db.enabled) end
     local action = not preview and "item" or nil
     if button:GetAttribute("type1") ~= action then button:SetAttribute("type1", action) end
     hideButton:SetText("Hide")
@@ -86,13 +108,16 @@ Refresh = function()
     end
     button:SetShown(not not show)
     hideButton:SetShown(not not (show and db.showHideButton))
+    if not show or not reminderVisible then fadeStart = nil end
+    reminderVisible = not not show
+    UpdateFade()
 end
 
 local function OpenSettings()
     if InCombatLockdown() then Say("Open settings after combat ends."); return end
     if not settings then
         settings = CreateFrame("Frame", "NightWatchTorchSettings", UIParent, "BackdropTemplate")
-        settings:SetSize(420, 390)
+        settings:SetSize(420, 502)
         settings:SetPoint("CENTER", UIParent, "CENTER", 250, 120)
         settings:SetFrameStrata("DIALOG")
         settings:SetClampedToScreen(true)
@@ -118,8 +143,17 @@ local function OpenSettings()
         instructions:SetJustifyH("LEFT")
         instructions:SetText("Drag a preview button to move it. Enable the Hide button below to preview it. Positions save automatically. Combat temporarily hides previews.")
 
+        settings.showHelper = CreateFrame("CheckButton", "NightWatchTorchShowHelper", settings, "UICheckButtonTemplate")
+        settings.showHelper:SetPoint("TOPLEFT", 20, -118)
+        settings.showHelper.Text:SetText("Show torch helper")
+        settings.showHelper:SetScript("OnClick", function(self)
+            db.enabled = not not self:GetChecked()
+            if db.enabled then db.hiddenUntil = 0 end
+            Refresh()
+        end)
+
         settings.showHide = CreateFrame("CheckButton", "NightWatchTorchShowHide", settings, "UICheckButtonTemplate")
-        settings.showHide:SetPoint("TOPLEFT", 20, -118)
+        settings.showHide:SetPoint("TOPLEFT", 20, -154)
         settings.showHide.Text:SetText("Show Hide button")
         settings.showHide:SetScript("OnClick", function(self)
             db.showHideButton = not not self:GetChecked()
@@ -139,10 +173,19 @@ local function OpenSettings()
             input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
             return input
         end
-        settings.minutes = Field("Hide duration (minutes, 1-1440)", -170, "NightWatchTorchMinutes")
-        settings.delay = Field("Delay after combat (seconds, 0-600)", -210, "NightWatchTorchDelay")
+        settings.minutes = Field("Hide duration (minutes, 1-1440)", -206, "NightWatchTorchMinutes")
+        settings.delay = Field("Delay after combat (seconds, 0-600)", -246, "NightWatchTorchDelay")
+        settings.fade = CreateFrame("CheckButton", "NightWatchTorchFadeEnabled", settings, "UICheckButtonTemplate")
+        settings.fade:SetPoint("TOPLEFT", 20, -274)
+        settings.fade.Text:SetText("Fade buttons when not hovered")
+        settings.fade:SetScript("OnClick", function(self)
+            db.fadeEnabled = not not self:GetChecked()
+            fadeStart = nil
+            Refresh()
+        end)
+        settings.fadeSeconds = Field("Fade after (seconds, 1-600)", -322, "NightWatchTorchFadeSeconds")
         settings.message = settings:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        settings.message:SetPoint("TOPLEFT", 24, -247)
+        settings.message:SetPoint("TOPLEFT", 24, -359)
         settings.message:SetWidth(372)
         settings.message:SetJustifyH("LEFT")
 
@@ -156,12 +199,20 @@ local function OpenSettings()
         end
         local function Save()
             local minutes, delay = tonumber(settings.minutes:GetText()), tonumber(settings.delay:GetText())
+            local fadeSeconds = tonumber(settings.fadeSeconds:GetText())
             if not minutes or minutes ~= minutes or minutes < 1 or minutes > 1440
                 or not delay or delay ~= delay or delay < 0 or delay > 600 then
                 settings.message:SetText("Enter 1-1440 minutes and 0-600 seconds, then click Save.")
                 return
             end
+            if not fadeSeconds or fadeSeconds ~= fadeSeconds or fadeSeconds < 1 or fadeSeconds > 600 then
+                settings.message:SetText("Enter a fade time from 1 to 600 seconds, then click Save.")
+                return
+            end
             db.hideMinutes, db.combatDelay = minutes, delay
+            db.fadeSeconds = fadeSeconds
+            fadeStart = nil
+            settings.fadeSeconds:ClearFocus()
             settings.minutes:ClearFocus()
             settings.delay:ClearFocus()
             settings.message:SetText("Saved. Close this window to leave preview mode.")
@@ -170,6 +221,7 @@ local function OpenSettings()
         SmallButton("NightWatchTorchSave", "Save", 24, 26, 90, Save)
         SmallButton(nil, "Show again now", 24, 64, 160, function()
             db.hiddenUntil = 0
+            fadeStart = nil
             settings.message:SetText("Hide timer cleared. Normal checks resume when you close settings.")
             Refresh()
         end)
@@ -186,18 +238,48 @@ local function OpenSettings()
         SmallButton(nil, "Close", 304, 26, 90, function() settings:Hide() end)
         settings.minutes:SetScript("OnEnterPressed", Save)
         settings.delay:SetScript("OnEnterPressed", Save)
+        settings.fadeSeconds:SetScript("OnEnterPressed", Save)
         settings:SetScript("OnHide", function()
             preview = false
+            fadeStart = nil
             Refresh()
         end)
     end
     settings.minutes:SetText(tostring(db.hideMinutes))
     settings.showHide:SetChecked(db.showHideButton)
     settings.delay:SetText(tostring(db.combatDelay))
+    settings.fade:SetChecked(db.fadeEnabled)
+    settings.fadeSeconds:SetText(tostring(db.fadeSeconds))
     settings.message:SetText("Changes to the numbers take effect when you click Save.")
     preview = true
     settings:Show()
     Refresh()
+end
+
+local function RegisterOptions()
+    if settingsCategory or not Settings or not Settings.RegisterCanvasLayoutCategory then return end
+    local panel = CreateFrame("Frame", "NightWatchTorchOptions")
+    panel:Hide()
+    panel.name = "Night Watch Torch"
+    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("Night Watch Torch")
+    local description = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    description:SetPoint("TOPLEFT", 16, -52)
+    description:SetWidth(500)
+    description:SetJustifyH("LEFT")
+    description:SetText("Show or hide the torch helper, set its timers, and move the buttons in the settings window. You can also open it with /nwt.")
+    local open = CreateFrame("Button", "NightWatchTorchOpenOptions", panel, "UIPanelButtonTemplate")
+    open:SetSize(260, 28)
+    open:SetPoint("TOPLEFT", 16, -112)
+    open:SetText("Open settings and move buttons")
+    open:SetScript("OnClick", function()
+        if InCombatLockdown() then Say("Open settings after combat ends."); return end
+        if SettingsPanel and SettingsPanel:IsShown() then HideUIPanel(SettingsPanel) end
+        OpenSettings()
+    end)
+    settingsCategory = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
+    Settings.RegisterAddOnCategory(settingsCategory)
 end
 
 local function Initialize()
@@ -210,7 +292,10 @@ local function Initialize()
     db.showHideButton = db.showHideButton == true
     if not db.showHideButton then db.hiddenUntil = 0 end
     db.combatDelay = Number(db.combatDelay, 0, 0, 600)
+    db.fadeEnabled = db.fadeEnabled == true
+    db.fadeSeconds = Number(db.fadeSeconds, 10, 1, 600)
     db.hiddenUntil = Number(db.hiddenUntil, 0, 0, GetServerTime() + 86400)
+    RegisterOptions()
 
     -- A secure parent handles combat hiding without addon code touching it.
     holder = CreateFrame("Frame", "NightWatchTorchHolder", UIParent, "SecureHandlerStateTemplate")
@@ -226,6 +311,7 @@ local function Initialize()
     button:SetAttribute("item1", "item:" .. ITEM_ID)
     EnableDrag(button, holder, "position")
     button:SetScript("OnEnter", function(self)
+        UpdateFade()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetItemByID(ITEM_ID)
         GameTooltip:AddLine("Click to light your torch.", 1, 0.82, 0)
@@ -234,12 +320,32 @@ local function Initialize()
     button:SetScript("OnLeave", function() GameTooltip:Hide() end)
     button:Hide()
 
+    local dismiss = CreateFrame("Button", "NightWatchTorchDismiss", button, "UIPanelCloseButton")
+    dismiss:SetSize(20, 20)
+    dismiss:SetPoint("TOPRIGHT", button, "TOPRIGHT", 3, 3)
+    dismiss:SetScript("OnClick", function()
+        if InCombatLockdown() then return end
+        db.enabled = false
+        GameTooltip:Hide()
+        Refresh()
+        Say("Hidden. Use /nwt and enable Show torch helper to bring it back.")
+    end)
+    dismiss:SetScript("OnEnter", function(self)
+        UpdateFade()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Hide torch helper")
+        GameTooltip:AddLine("Show it again in /nwt settings.", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    dismiss:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     hideHolder = CreateFrame("Frame", "NightWatchTorchHideHolder", UIParent, "SecureHandlerStateTemplate")
     hideHolder:SetSize(132, 26)
     Place(hideHolder, "hidePosition", -198)
     RegisterStateDriver(hideHolder, "visibility", "[combat] hide; show")
     hideButton = CreateFrame("Button", "NightWatchTorchHideButton", hideHolder, "UIPanelButtonTemplate")
     hideButton:SetAllPoints(hideHolder)
+    hideButton:SetScript("OnEnter", UpdateFade)
     hideButton:SetScript("OnClick", function()
         if preview or InCombatLockdown() then return end
         db.hiddenUntil = GetServerTime() + db.hideMinutes * 60
@@ -255,12 +361,16 @@ local function Initialize()
             elapsed = 0
             Refresh()
         end
+        UpdateFade()
     end)
     Refresh()
 end
 
 events:SetScript("OnEvent", function(_, event, unit)
-    if event == "PLAYER_REGEN_ENABLED" then lastCombatEnd = GetTime() end
+    if event == "PLAYER_REGEN_ENABLED" then
+        lastCombatEnd = GetTime()
+        fadeStart = nil
+    end
     if event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED" then
         Initialize()
     end
@@ -289,6 +399,7 @@ SlashCmdList.NIGHTWATCHTORCH = function(message)
         OpenSettings()
     elseif command == "show" then
         db.hiddenUntil = 0
+        fadeStart = nil
     else
         Say((db.enabled and "Enabled" or "Disabled") .. " in " .. db.zone .. ".")
         Say("/nwt: settings. /nwt zone: current zone. /nwt on or off. /nwt show: clear hide timer. /nwt reset: Duskwood.")
