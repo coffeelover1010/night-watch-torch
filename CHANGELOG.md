@@ -1,3 +1,11 @@
+# 0.2.3-beta
+
+- Give the torch reminder a dark frame, gold border, item icon, and clear title.
+- Use a smaller matching Hide button and move the close button inside the frame.
+- Keep decoration attached to the existing action button so it follows visibility and fading.
+
+Lua syntax and package checks passed. The updated appearance still needs verification in the Forever client.
+
 # 0.2.2-beta
 
 - Default the post-combat delay to 10 seconds, including existing zero-default settings. Custom nonzero delays are preserved; zero can still be selected afterward.

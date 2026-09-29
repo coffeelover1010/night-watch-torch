@@ -309,6 +309,42 @@ local function RegisterOptions()
     Settings.RegisterAddOnCategory(settingsCategory)
 end
 
+-- Keep the decoration on the action button so it shares visibility and fading.
+local function StyleHelper(control, title)
+    control:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    control:SetBackdropColor(0.055, 0.045, 0.035, 0.96)
+    control:SetBackdropBorderColor(0.65, 0.51, 0.28, 1)
+    local text = control:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    text:SetPoint("CENTER")
+    control:SetFontString(text)
+    control:SetNormalFontObject(GameFontHighlightSmall)
+    control:SetHighlightFontObject(GameFontNormalSmall)
+    local highlight = control:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetPoint("TOPLEFT", 4, -4)
+    highlight:SetPoint("BOTTOMRIGHT", -4, 4)
+    highlight:SetColorTexture(1, 0.82, 0.45, 0.10)
+    control:SetHighlightTexture(highlight)
+    if title then
+        local icon = control:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(28, 28)
+        icon:SetPoint("LEFT", 9, 0)
+        icon:SetTexture(C_Item.GetItemIconByID(ITEM_ID))
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        local heading = control:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        heading:SetPoint("TOPLEFT", 45, -9)
+        heading:SetText(title)
+        local label = control:GetFontString()
+        label:ClearAllPoints()
+        label:SetPoint("TOPLEFT", 45, -24)
+        label:SetJustifyH("LEFT")
+    end
+end
+
 local function Initialize()
     if button or InCombatLockdown() then return end
     NightWatchTorchDB = type(NightWatchTorchDB) == "table" and NightWatchTorchDB or {}
@@ -331,12 +367,13 @@ local function Initialize()
 
     -- A secure parent handles combat hiding without addon code touching it.
     holder = CreateFrame("Frame", "NightWatchTorchHolder", UIParent, "SecureHandlerStateTemplate")
-    holder:SetSize(160, 42)
+    holder:SetSize(190, 46)
     Place(holder, "position", -160)
     RegisterStateDriver(holder, "visibility", "[combat] hide; show")
 
-    button = CreateFrame("Button", "NightWatchTorchButton", holder, "SecureActionButtonTemplate,UIPanelButtonTemplate")
+    button = CreateFrame("Button", "NightWatchTorchButton", holder, "SecureActionButtonTemplate,BackdropTemplate")
     button:SetAllPoints(holder)
+    StyleHelper(button, "Night Watch Torch")
     button:SetText("Light Torch")
     button:RegisterForClicks("AnyDown", "AnyUp")
     button:SetAttribute("type1", "item")
@@ -354,7 +391,7 @@ local function Initialize()
 
     local dismiss = CreateFrame("Button", "NightWatchTorchDismiss", button, "UIPanelCloseButton")
     dismiss:SetSize(20, 20)
-    dismiss:SetPoint("TOPRIGHT", button, "TOPRIGHT", 3, 3)
+    dismiss:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
     dismiss:SetScript("OnClick", function()
         if InCombatLockdown() then return end
         db.enabled = false
@@ -372,11 +409,12 @@ local function Initialize()
     dismiss:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     hideHolder = CreateFrame("Frame", "NightWatchTorchHideHolder", UIParent, "SecureHandlerStateTemplate")
-    hideHolder:SetSize(132, 26)
+    hideHolder:SetSize(80, 24)
     Place(hideHolder, "hidePosition", -198)
     RegisterStateDriver(hideHolder, "visibility", "[combat] hide; show")
-    hideButton = CreateFrame("Button", "NightWatchTorchHideButton", hideHolder, "UIPanelButtonTemplate")
+    hideButton = CreateFrame("Button", "NightWatchTorchHideButton", hideHolder, "BackdropTemplate")
     hideButton:SetAllPoints(hideHolder)
+    StyleHelper(hideButton)
     hideButton:SetScript("OnEnter", UpdateFade)
     hideButton:SetScript("OnClick", function()
         if preview or InCombatLockdown() then return end
