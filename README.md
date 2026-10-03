@@ -14,7 +14,7 @@ The button appears when:
 - The torch buff is missing and the item cooldown is ready.
 - You are not casting or channeling.
 
-The button hides during combat. After combat, it returns when the torch is ready. A real click is required to use the item.
+The button hides during combat. When combat ends, an enabled helper clears X dismissal and the Hide timer, then returns after your combat delay when the torch buff is missing and the item is ready. Explicitly turning the helper off still keeps it off. A real click is required to use the item.
 
 A smaller **Hide** button can hide both buttons for a while. It is **off by default**; enable **Show Hide button** in settings. The hide duration defaults to **5 minutes**, and the timer survives a UI reload. Turning the option off clears any active hide timer.
 
@@ -24,7 +24,9 @@ Enable **Fade buttons when not hovered** to fade the buttons out after a chosen 
 
 Find **Night Watch Torch** under **Options → AddOns**, then click **Open settings and move buttons**. You can also type `/nwt`.
 
-Click the small **X** at the top-right of **Light Torch** to hide the helper until you turn it back on. Type `/nwt` and check **Show torch helper** to restore it. This choice survives reloads.
+Click the small **X** at the top-right of **Light Torch** to hide the helper for this zone visit. Leaving and re-entering the selected zone clears both this dismissal and the optional Hide timer. Moving between subzones does not reset them, and reloading in the same zone keeps the helper hidden. Use `/nwt show` to restore it sooner. Disabling **Show torch helper** or using `/nwt off` keeps it disabled across zone changes.
+
+Lighting your torch again turns the helper back on and clears X dismissal and the Hide timer, including after `/nwt off`. A torch already lit when you log in or reload also restores the helper. The reminder stays hidden while the torch buff is active and resumes its normal checks when it wears off.
 
 Type `/nwt` to open settings. Set the hide duration in minutes and the delay after combat in seconds, then click **Save**. The delay defaults to **10 seconds**. The update changes the old zero default to 10 once; you can still choose zero afterward.
 

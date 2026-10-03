@@ -1,3 +1,11 @@
+# 0.2.4-beta
+
+- Clear X dismissal and the Hide timer after combat when the helper is enabled, so a missed torch-use observation cannot leave the relight reminder suppressed.
+
+- Recognize a torch already lit at login or reload so a saved disabled/hidden helper can return when it expires.
+- Lighting the torch again enables the helper and clears dismissal and the Hide timer.
+- Re-offer the torch after leaving and re-entering its zone when hidden with X or the timed Hide button. Keep explicit disabling separate.
+
 # 0.2.3-beta
 
 - Give the torch reminder a dark frame, gold border, item icon, and clear title.

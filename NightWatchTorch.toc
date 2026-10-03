@@ -2,7 +2,7 @@
 ## Title: Night Watch Torch
 ## Notes: A one-click reminder to relight your torch outside combat.
 ## Author: Videocat
-## Version: 0.2.3-beta
+## Version: 0.2.4-beta
 ## SavedVariables: NightWatchTorchDB
 
 NightWatchTorch.lua

@@ -8,6 +8,7 @@ local Refresh
 local settingsCategory
 local fadeStart, reminderVisible
 local temporarilySuppressed = false
+local hadTorchBuff
 
 local function UpdateFade()
     if not button or not hideHolder or InCombatLockdown() then return end
@@ -107,8 +108,30 @@ local function IsEatingOrDrinking()
 end
 
 Refresh = function()
+    -- Track real zone changes even in combat; subzone changes do not reset Hide.
+    if db then
+        local zone = GetRealZoneText()
+        if zone and zone ~= "" then
+            if db.lastZone and db.lastZone ~= zone and zone == db.zone then
+                db.dismissed = nil
+                db.hiddenUntil = 0
+                fadeStart = nil
+            end
+            db.lastZone = zone
+        end
+    end
     -- Never inspect combat auras or change protected frames in combat.
     if not button or InCombatLockdown() then return end
+    local hasTorchBuff = HasTorchBuff()
+    -- A lit torch resumes reminders, including one already active at login/reload.
+    -- Only do this on first observation or a new buff, so Off still works afterward.
+    if hasTorchBuff and hadTorchBuff ~= true then
+        db.enabled = true
+        db.dismissed = nil
+        db.hiddenUntil = 0
+        fadeStart = nil
+    end
+    hadTorchBuff = hasTorchBuff
     local wasSuppressed = temporarilySuppressed
     temporarilySuppressed = false
     local show = preview and db.enabled
@@ -116,10 +139,10 @@ Refresh = function()
     local action = not preview and "item" or nil
     if button:GetAttribute("type1") ~= action then button:SetAttribute("type1", action) end
     hideButton:SetText("Hide")
-    if not preview and db.enabled and GetRealZoneText() == db.zone
+    if not preview and db.enabled and not db.dismissed and GetRealZoneText() == db.zone
         and GetServerTime() >= (db.hiddenUntil or 0)
         and (not lastCombatEnd or GetTime() >= lastCombatEnd + db.combatDelay)
-        and not UnitIsDeadOrGhost("player") and not HasTorchBuff() then
+        and not UnitIsDeadOrGhost("player") and not hasTorchBuff then
         local bag, slot = FindTorch()
         if bag then
             local start, duration, enabled = C_Container.GetContainerItemCooldown(bag, slot)
@@ -175,7 +198,7 @@ local function OpenSettings()
         settings.showHelper.Text:SetText("Show torch helper")
         settings.showHelper:SetScript("OnClick", function(self)
             db.enabled = not not self:GetChecked()
-            if db.enabled then db.hiddenUntil = 0 end
+            if db.enabled then db.hiddenUntil = 0; db.dismissed = nil end
             Refresh()
         end)
 
@@ -247,6 +270,7 @@ local function OpenSettings()
         end
         SmallButton("NightWatchTorchSave", "Save", 24, 26, 90, Save)
         SmallButton(nil, "Show again now", 24, 64, 160, function()
+            db.dismissed = nil
             db.hiddenUntil = 0
             fadeStart = nil
             settings.message:SetText("Hide timer cleared. Normal checks resume when you close settings.")
@@ -394,16 +418,16 @@ local function Initialize()
     dismiss:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
     dismiss:SetScript("OnClick", function()
         if InCombatLockdown() then return end
-        db.enabled = false
+        db.dismissed = true
         GameTooltip:Hide()
         Refresh()
-        Say("Hidden. Use /nwt and enable Show torch helper to bring it back.")
+        Say("Hidden until combat ends, you use your torch, or you re-enter the zone. /nwt show restores it now.")
     end)
     dismiss:SetScript("OnEnter", function(self)
         UpdateFade()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText("Hide torch helper")
-        GameTooltip:AddLine("Show it again in /nwt settings.", 1, 1, 1)
+        GameTooltip:AddLine("Returns after combat, using your torch, or re-entering the zone. /nwt show restores it now.", 1, 1, 1)
         GameTooltip:Show()
     end)
     dismiss:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -440,6 +464,12 @@ events:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_REGEN_ENABLED" then
         lastCombatEnd = GetTime()
         fadeStart = nil
+        -- Combat can remove a torch before its lit aura was observed. Re-arm
+        -- enabled reminders without relying on that missed aura transition.
+        if db and db.enabled then
+            db.dismissed = nil
+            db.hiddenUntil = 0
+        end
     end
     if event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED" then
         Initialize()
@@ -457,6 +487,7 @@ SlashCmdList.NIGHTWATCHTORCH = function(message)
     local command = (message or ""):lower():match("^%s*(.-)%s*$")
     if command == "on" or command == "off" then
         db.enabled = command == "on"
+        if db.enabled then db.dismissed = nil; db.hiddenUntil = 0 end
         Say(db.enabled and "Enabled." or "Disabled.")
     elseif command == "zone" then
         db.zone = GetRealZoneText()
@@ -464,10 +495,13 @@ SlashCmdList.NIGHTWATCHTORCH = function(message)
     elseif command == "reset" then
         db.zone = "Duskwood"
         db.enabled = true
+        db.dismissed = nil
+        db.hiddenUntil = 0
         Say("Enabled for Duskwood.")
     elseif command == "" or command == "settings" or command == "options" then
         OpenSettings()
     elseif command == "show" then
+        db.dismissed = nil
         db.hiddenUntil = 0
         fadeStart = nil
     else
